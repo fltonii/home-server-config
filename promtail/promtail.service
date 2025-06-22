@@ -1,0 +1,10 @@
+[Unit]
+Description=Promtail service for Pi-hole
+After=network.target
+
+[Service]
+ExecStart=/opt/promtail -config.file=/etc/promtail/promtail.yaml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
