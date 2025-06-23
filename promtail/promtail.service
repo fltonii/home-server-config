@@ -1,5 +1,5 @@
 [Unit]
-Description=Promtail service for Pi-hole
+Description=Promtail service for collecting logs
 After=network.target
 
 [Service]

@@ -3,17 +3,17 @@ server:
   grpc_listen_port: 0
 
 positions:
-  filename: /var/log/positions-pihole.yaml
+  filename: /var/log/positions-omv.yaml
 
 clients:
   - url: http://10.0.0.61:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: pihole
+  - job_name: omv
     static_configs:
       - targets:
           - localhost
         labels:
-          job: pihole
-          host: pihole.home
-          __path__: /var/log/pihole/*.log
+          job: omv
+          host: omv.home
+          __path__: /var/log/*.log
