@@ -1,0 +1,7 @@
+service: pihole
+host: pihole.home
+
+promtail:
+  enabled: true
+  log_path: /var/log/pihole/*.log
+  loki_url: "10.0.0.61"
