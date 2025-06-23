@@ -1,0 +1,12 @@
+service: omv
+host: omv.home
+
+promtail:
+  enabled: true
+  log_path: "/var/log/syslog"
+  loki_url: "10.0.0.61"
+
+# (future example)
+node_exporter:
+  enabled: true
+  port: 9100

@@ -1,5 +1,5 @@
 [Unit]
-Description=Promtail service for collecting logs
+Description=Promtail service for omv
 After=network.target
 
 [Service]

@@ -1,0 +1,10 @@
+[Unit]
+Description=Promtail service for __SERVICE_NAME__
+After=network.target
+
+[Service]
+ExecStart=__BINARY_PATH__ -config.file=__CONFIG_PATH__
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

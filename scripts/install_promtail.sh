@@ -1,62 +1,72 @@
 #!/bin/bash
 set -e
 
-# === Defaults ===
-PROMTAIL_VERSION="2.9.4"
-INSTALL_DIR="/opt/promtail"
-CONFIG_TEMPLATE="/root/home-server-config/promtail/promtail.template.yaml"
+SERVICE_NAME="$1"
 
-# === Args / Env vars ===
-NAME="${NAME:-$1}"                        # e.g. pihole
-HOST="${HOST:-$2}"                        # e.g. pihole.home
-LOG_PATH="${LOG_PATH:-$3}"               # e.g. /var/log/pihole/*.log
-LOKI_URL="${LOKI_URL:-$4}"               # e.g. 10.0.0.61
-
-# === Derived paths ===
-SERVICE_NAME="promtail"
-BIN_PATH="$INSTALL_DIR/promtail"
-CONFIG_TARGET="/etc/promtail/promtail.yaml"
-SERVICE_SOURCE="/root/home-server-config/promtail/promtail.service"
-SERVICE_TARGET="/etc/systemd/system/${SERVICE_NAME}.service"
-
-# === Validate inputs ===
-if [[ -z "$NAME" || -z "$HOST" || -z "$LOG_PATH" || -z "$LOKI_URL" ]]; then
-  echo "Usage: NAME=xxx HOST=xxx LOG_PATH=xxx LOKI_URL=xxx ./install_promtail.sh"
-  echo "Or:    ./install_promtail.sh <name> <host> <log_path> <loki_url>"
+if [[ -z "$SERVICE_NAME" ]]; then
+  echo "Usage: $0 <service_name> (must contain service.config.yaml and generated promtail.* files)"
   exit 1
 fi
 
-echo "📦 Installing Promtail $PROMTAIL_VERSION for $NAME ($HOST)..."
+REPO_ROOT="$(dirname "$(realpath "$0")")/.."
+SERVICE_DIR="$REPO_ROOT/$SERVICE_NAME"
+CONFIG_YAML="$SERVICE_DIR/service.config.yaml"
+PROMTAIL_CONFIG="$SERVICE_DIR/promtail.yaml"
+PROMTAIL_SERVICE="$SERVICE_DIR/promtail.service"
 
-# === Download and install Promtail binary ===
-echo "⬇️  Downloading Promtail..."
-cd /tmp
-wget -q "https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-amd64.zip" -O promtail.zip
-unzip -o promtail.zip
-rm promtail.zip
-sudo mv /tmp/promtail-linux-amd64 "$INSTALL_DIR"
-sudo chmod +x "$INSTALL_DIR"
-echo "✅ Promtail binary installed at $INSTALL_DIR"
+CONFIG_TARGET="/etc/promtail/promtail.yaml"
+SERVICE_TARGET="/etc/systemd/system/promtail.service"
+BINARY_PATH="/opt/promtail"
+PROMTAIL_VERSION="2.9.4"
 
-# === Step 2: Generate config from template ===
-echo "⚙️ Generating Promtail config..."
+# === Check dependencies ===
+if ! command -v yq &>/dev/null; then
+  echo "❌ 'yq' is required. Install with: sudo apt install yq"
+  exit 1
+fi
+
+# === Check files ===
+if [[ ! -f "$CONFIG_YAML" || ! -f "$PROMTAIL_CONFIG" || ! -f "$PROMTAIL_SERVICE" ]]; then
+  echo "❌ Missing required files in $SERVICE_DIR"
+  exit 1
+fi
+
+PROMTAIL_ENABLED=$(yq -r '.promtail.enabled' "$CONFIG_YAML")
+if [[ "$PROMTAIL_ENABLED" != "true" ]]; then
+  echo "ℹ️  Promtail not enabled in $CONFIG_YAML. Skipping install."
+  exit 0
+fi
+
+echo "📦 Installing Promtail for $SERVICE_NAME"
+
+# === Step 1: Install Promtail binary ===
+if [[ ! -f "$BINARY_PATH" ]]; then
+  echo "⬇️  Downloading Promtail $PROMTAIL_VERSION..."
+  cd /tmp
+  wget -q "https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-amd64.zip" -O promtail.zip
+  unzip -o promtail.zip
+  rm promtail.zip
+  sudo mv promtail-linux-amd64 "$BINARY_PATH"
+  sudo chmod +x "$BINARY_PATH"
+  echo "✅ Promtail installed at $BINARY_PATH"
+else
+  echo "✅ Promtail already installed at $BINARY_PATH"
+fi
+
+# === Step 2: Symlink config ===
+echo "🔗 Symlinking Promtail config..."
 sudo mkdir -p /etc/promtail
-sed \
-  -e "s|__NAME__|$NAME|g" \
-  -e "s|__HOST__|$HOST|g" \
-  -e "s|__LOG_PATH__|$LOG_PATH|g" \
-  -e "s|__LOKI_URL__|$LOKI_URL|g" \
-  "$CONFIG_TEMPLATE" | sudo tee "$CONFIG_TARGET" > /dev/null
+sudo ln -sf "$PROMTAIL_CONFIG" "$CONFIG_TARGET"
 
-# === Step 3: Link service file ===
-echo "🔗 Linking systemd service..."
-sudo ln -sf "$SERVICE_SOURCE" "$SERVICE_TARGET"
+# === Step 3: Symlink service file ===
+echo "🔗 Symlinking systemd service..."
+sudo ln -sf "$PROMTAIL_SERVICE" "$SERVICE_TARGET"
 
-# === Step 4: Start Promtail ===
-echo "🚀 Starting $SERVICE_NAME..."
+# === Step 4: Reload and start service ===
+echo "🚀 Starting promtail.service..."
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable --now "$SERVICE_NAME"
+sudo systemctl enable --now promtail
 
-# === Step 5: Confirm ===
-sudo systemctl status "$SERVICE_NAME" --no-pager
+# === Step 5: Verify ===
+sudo systemctl status promtail --no-pager
