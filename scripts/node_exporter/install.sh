@@ -20,7 +20,7 @@ NODE_EXPORTER_BIN="/usr/local/bin/node_exporter"
 if ! command -v node_exporter &>/dev/null; then
   echo "⬇️  Installing node_exporter..."
   cd /tmp
-  wget -q https://github.com/prometheus/node_exporter/releases/latest/download/node_exporter-1.8.1.linux-amd64.tar.gz
+  wget -q https://github.com/prometheus/node_exporter/releases/latest/download/node_exporter-1.9.1.linux-amd64.tar.gz
   tar -xzf node_exporter-*.tar.gz
   sudo mv node_exporter-*/node_exporter "$NODE_EXPORTER_BIN"
   sudo chmod +x "$NODE_EXPORTER_BIN"
